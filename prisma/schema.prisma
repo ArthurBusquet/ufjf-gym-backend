@@ -1,95 +1,113 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
+// schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id          Int          @id @default(autoincrement())
-  name        String       @db.VarChar(255)
-  email       String       @unique @db.VarChar(255)
-  password    String       @db.VarChar(255)
-  avatar      String?      @db.VarChar(255)
-  points      Int
-  role        Role         @default(USER)
-  activities  Activity[]
-  challenges  Scoreboard[]
-  firstBloods Challenge[]
+enum EmployeeRole {
+  ADMIN
+  RECEPTIONIST
+  TEACHER
+  TRAINEE
+}
 
+enum MembershipStatus {
+  ACTIVE
+  CANCELLED
+  SUSPENDED
+}
+
+enum MembershipType {
+  MONTHLY
+  QUARTERLY
+  SEMESTERLY
+  ANNUAL
+}
+
+model Person {
+  id        Int   @id @default(autoincrement())
+  cpf       String   @unique
+  name      String
+  email     String   @unique
+  avatar     String?
+  password  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@map(name: "user")
+  // Relações de especialização
+  employee  Employee?
+  student   Student?
 }
 
-model Challenge {
-  id               Int          @id @default(autoincrement())
-  name             String       @db.VarChar(255)
-  description      String       @db.Text
-  image            String?      @db.VarChar(255)
-  url              String       @db.VarChar(255)
-  firstBloodUserId Int?
-  firstBlood       User?        @relation(fields: [firstBloodUserId], references: [id], onDelete: Cascade)
-  difficulty       Difficulty   @default(EASY)
-  flags            Flag[]
-  scoreboard       Scoreboard[]
-  releaseAt        DateTime
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+model Employee {
+  id        Int       @id @default(autoincrement())
+  tenure    Int?         // Tempo de casa em meses
+  role      EmployeeRole
+  person    Person       @relation(fields: [personId], references: [id])
+  personId  Int       @unique
 
-  @@map(name: "challenge")
+  // Relações profissionais
+  givenAssessments PhysicalAssessment[] @relation("TeacherAssessments")
+  updatedWorkoutPlans WorkoutPlan[]
+
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
 }
 
-model Flag {
+model Student {
+  id        Int       @id @default(autoincrement())
+  person    Person       @relation(fields: [personId], references: [id])
+  personId  Int       @unique
+
+  // Relações acadêmicas
+  memberships Membership[]
+  workoutPlan WorkoutPlan?
+  assessments PhysicalAssessment[] @relation("StudentAssessments")
+
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+}
+
+model Membership {
+  id        Int          @id @default(autoincrement())
+  startDate DateTime
+  endDate   DateTime?
+  status    MembershipStatus
+  type      MembershipType
+  student   Student         @relation(fields: [studentId], references: [id])
+  studentId Int
+
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+}
+
+model WorkoutPlan {
+  id        Int          @id @default(autoincrement())
+  content   Json?
+  student   Student         @relation(fields: [studentId], references: [id])
+  studentId Int @unique
+  updatedBy Employee?       @relation(fields: [employeeId], references: [id])
+  employeeId Int?
+
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+}
+
+model PhysicalAssessment {
   id          Int        @id @default(autoincrement())
-  flag        String     @unique @db.VarChar(255)
-  difficulty  Difficulty @default(EASY)
-  points      Int
-  challenge   Challenge  @relation(fields: [challengeId], references: [id], onDelete: Cascade)
-  challengeId Int
-  activities  Activity[]
+  height      Float
+  weight      Float
+  bodyFat     Float?
+  observations String?
+  student     Student       @relation("StudentAssessments", fields: [studentId], references: [id])
+  studentId   Int
+  teacher     Employee      @relation("TeacherAssessments", fields: [teacherId], references: [id])
+  teacherId   Int
 
-  @@map(name: "flag")
-}
-
-model Activity {
-  user          User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId        Int
-  flag          Flag @relation(fields: [flagId], references: [id], onDelete: Cascade)
-  flagId        Int
-  executionTime Int // Seconds
-
-  createdAt DateTime @default(now())
-
-  @@id([userId, flagId])
-  @@map(name: "activity")
-}
-
-model Scoreboard {
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId        Int
-  challenge     Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
-  challengeId   Int
-  executionTime Int // Seconds
-
-  @@id([userId, challengeId])
-  @@map(name: "scoreboard")
-}
-
-enum Role {
-  USER
-  ADMIN
-}
-
-enum Difficulty {
-  EASY
-  MEDIUM
-  HARD
-  INSANE
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 }

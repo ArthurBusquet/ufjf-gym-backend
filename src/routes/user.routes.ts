@@ -6,6 +6,7 @@ import { validate } from '@middlewares/validateMiddleware';
 import { ensureAuthenticated } from '@middlewares/ensureAuthenticationMiddleware';
 import { userSchema } from '@schemas/userSchema';
 import { imageFilter } from '../utils/upload';
+import { checkRole } from '@middlewares/checkRoleMiddleware';
 
 const storage = multer.memoryStorage();
 
@@ -19,13 +20,14 @@ const usersRoutes = Router();
 
 export const UserController = new UserControllerClass();
 
+// Rotas autenticadas para perfil do usuário
 usersRoutes.get('/profile', ensureAuthenticated, UserController.showProfile);
 
 usersRoutes.put(
   '/profile',
   upload.single('avatar'),
   ensureAuthenticated,
-  validate(userSchema.update),
+  validate(userSchema.updateProfile),
   UserController.updateProfile.bind(UserController)
 );
 
@@ -36,22 +38,50 @@ usersRoutes.patch(
   UserController.updateProfilePassword.bind(UserController)
 );
 
-usersRoutes.get(
-  '/scoreboard',
+usersRoutes.post(
+  '/create',
   ensureAuthenticated,
-  UserController.scoreboard.bind(UserController)
+  upload.single('avatar'),
+  validate(userSchema.create),
+  UserController.create.bind(UserController)
+);
+
+// Rotas administrativas (apenas admin)
+usersRoutes.get(
+  '/',
+  ensureAuthenticated,
+  checkRole(['ADMIN']),
+  UserController.index.bind(UserController)
 );
 
 usersRoutes.get(
-  '/max-points',
+  '/:id',
   ensureAuthenticated,
-  UserController.maxPoints.bind(UserController)
+  checkRole(['ADMIN']),
+  UserController.show.bind(UserController)
 );
 
-usersRoutes.get(
-  '/activities',
+usersRoutes.put(
+  '/:id',
+  upload.single('avatar'),
   ensureAuthenticated,
-  UserController.activities.bind(UserController)
+  checkRole(['ADMIN']),
+  validate(userSchema.update),
+  UserController.update.bind(UserController)
+);
+
+usersRoutes.delete(
+  '/:id',
+  ensureAuthenticated,
+  checkRole(['ADMIN']),
+  UserController.delete.bind(UserController)
+);
+
+usersRoutes.patch(
+  '/:id/reset-password',
+  ensureAuthenticated,
+  checkRole(['ADMIN']),
+  UserController.passwordReset.bind(UserController)
 );
 
 export { usersRoutes };

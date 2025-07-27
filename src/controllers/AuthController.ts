@@ -12,26 +12,24 @@ export class AuthController {
   public async login(request: Request, response: Response): Promise<void> {
     const { email, password } = request.body;
 
-    const user = await prisma.user.findUnique({
-      select: {
-        id: true,
-        email: true,
-        password: true,
-        role: true,
-        name: true,
-        points: true,
-        avatarUrl: true,
-      },
+    console.log('Login attempt:', { email, password });
+
+    // Buscar pessoa com suas especializações
+    const person = await prisma.person.findUnique({
       where: { email },
+      include: {
+        employee: true,
+        student: true,
+      },
     });
 
-    if (user === null) {
+    if (!person) {
       throw new AppError('E-mail ou senha inválidos', 401);
     }
 
     const passwordMatch = await this.hashProvider.compareHash(
       password,
-      user.password
+      person.password
     );
 
     if (!passwordMatch) {
@@ -40,13 +38,26 @@ export class AuthController {
 
     const { secret, expiration } = authConfig.options.jwt;
 
+    // Determinar os papéis do usuário
+    const roles: string[] = [];
+
+    if (person.employee) {
+      roles.push(person.employee.role);
+    }
+
+    if (person.student) {
+      roles.push('STUDENT');
+    }
+
+    // Formatar dados do usuário para o token
     const formatedUser = {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      avatar: user.avatarUrl,
-      points: user.points,
+      id: person.id,
+      name: person.name,
+      email: person.email,
+      roles,
+      avatar: person.avatar,
+      cpf: person.cpf,
+      tenure: person.employee?.tenure,
     };
 
     const token = sign(formatedUser, secret, {

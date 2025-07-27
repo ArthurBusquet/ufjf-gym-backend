@@ -1,47 +1,50 @@
 import { type Request, type Response } from 'express';
-import { type $Enums, Prisma } from '@prisma/client';
+import { EmployeeRole, MembershipStatus } from '@prisma/client';
 import { prisma } from '../prisma.client';
 import { S3StorageProvider } from '@providers/S3StorageProvider';
 import { HashProvider } from '@providers/HashProvider';
 import { AppError } from '@errors/AppError';
-
-type Activity = {
-  user: {
-    name: string;
-    avatarUrl: string | null;
-    points: number;
-  };
-  flag: {
-    challenge: {
-      name: string;
-    };
-    points: number;
-    difficulty: $Enums.Difficulty;
-  };
-} & {
-  createdAt: Date;
-  userId: number;
-  flagId: number;
-  executionTime: number;
-};
 
 export class UserController {
   private readonly hashProvider = new HashProvider();
   private readonly storageProvider = new S3StorageProvider();
 
   public async index(_: Request, response: Response): Promise<void> {
-    const users = await prisma.user.findMany({
+    const persons = await prisma.person.findMany({
       select: {
         id: true,
         name: true,
         email: true,
-        points: true,
-        avatarUrl: true,
+        avatar: true,
+        employee: {
+          select: {
+            role: true,
+            tenure: true,
+          },
+        },
+        student: {
+          select: {
+            id: true,
+          },
+        },
       },
       orderBy: {
         name: 'asc',
       },
     });
+
+    // Formatar resposta incluindo roles
+    const users = persons.map((person) => ({
+      id: person.id,
+      name: person.name,
+      email: person.email,
+      avatar: person.avatar,
+      roles: [
+        ...(person.employee ? [person.employee.role] : []),
+        ...(person.student ? ['STUDENT'] : []),
+      ],
+      tenure: person.employee?.tenure,
+    }));
 
     response.status(200).json(users);
   }
@@ -49,116 +52,256 @@ export class UserController {
   public async show(request: Request, response: Response): Promise<void> {
     const { id } = request.params;
 
-    const user = await prisma.user.findUnique({
+    const person = await prisma.person.findUnique({
       where: { id: Number(id) },
       select: {
         id: true,
         name: true,
         email: true,
-        points: true,
-        avatarUrl: true,
-        role: true,
+        avatar: true,
+        employee: {
+          select: {
+            role: true,
+            tenure: true,
+          },
+        },
+        student: {
+          select: {
+            id: true,
+          },
+        },
       },
     });
 
-    if (!user) {
-      throw new AppError('Desafio não encontrado', 404);
+    if (!person) {
+      throw new AppError('Usuário não encontrado', 404);
     }
+
+    // Formatar resposta incluindo roles
+    const user = {
+      id: person.id,
+      name: person.name,
+      email: person.email,
+      avatar: person.avatar,
+      roles: [
+        ...(person.employee ? [person.employee.role] : []),
+        ...(person.student ? ['STUDENT'] : []),
+      ],
+      tenure: person.employee?.tenure,
+    };
 
     response.status(200).json(user);
   }
 
   public async update(request: Request, response: Response): Promise<void> {
-    const userId = Number(request.params.id);
+    const userId = request.params.id;
 
-    const { name, email, points, role } = request.body;
+    const { name, email, role, tenure, isStudent } = request.body;
 
     try {
+      // Atualizar foto se fornecida
       if (request.file) {
-        const user = await prisma.user.findUnique({
-          select: { avatar: true },
-          where: { id: userId },
+        const person = await prisma.person.findUnique({
+          where: { id: Number(userId) },
         });
 
-        if (user?.avatar) {
-          await this.storageProvider.delete(user?.avatar ?? '');
+        if (person?.avatar) {
+          await this.storageProvider.delete(person.avatar);
         }
 
         const avatarUrl = await this.storageProvider.upload(request.file);
 
-        await prisma.user.update({
-          where: { id: userId },
+        await prisma.person.update({
+          where: { id: Number(userId) },
           data: { avatar: avatarUrl },
         });
       }
 
-      const updateUser = await prisma.user.update({
-        where: { id: userId },
-        data: { name, email, points: Number(points), role },
+      // Atualizar dados básicos
+      await prisma.person.update({
+        where: { id: Number(userId) },
+        data: { name, email },
+      });
+
+      // Gerenciar especialização Employee
+      if (role) {
+        const existingEmployee = await prisma.employee.findUnique({
+          where: { personId: Number(userId) },
+        });
+
+        if (existingEmployee) {
+          await prisma.employee.update({
+            where: { personId: Number(userId) },
+            data: {
+              role: role as EmployeeRole,
+              tenure: tenure ? parseInt(tenure) : undefined,
+            },
+          });
+        } else {
+          await prisma.employee.create({
+            data: {
+              role: role as EmployeeRole,
+              tenure: tenure ? parseInt(tenure) : 0,
+              person: { connect: { id: Number(userId) } },
+            },
+          });
+        }
+      }
+
+      // Gerenciar especialização Student
+      if (isStudent) {
+        const existingStudent = await prisma.student.findUnique({
+          where: { personId: Number(userId) },
+        });
+
+        if (!existingStudent) {
+          await prisma.student.create({
+            data: {
+              person: { connect: { id: Number(userId) } },
+            },
+          });
+        }
+      }
+
+      const updatedUser = await prisma.person.findUnique({
+        where: { id: Number(userId) },
         select: {
           id: true,
           name: true,
           email: true,
-          avatarUrl: true,
-          points: true,
+          avatar: true,
+          employee: {
+            select: {
+              role: true,
+              tenure: true,
+            },
+          },
+          student: {
+            select: {
+              id: true,
+            },
+          },
         },
       });
 
-      response.json(updateUser);
+      response.json({
+        id: updatedUser?.id,
+        name: updatedUser?.name,
+        email: updatedUser?.email,
+        avatar: updatedUser?.avatar,
+        roles: [
+          ...(updatedUser?.employee ? [updatedUser.employee.role] : []),
+          ...(updatedUser?.student ? ['STUDENT'] : []),
+        ],
+        tenure: updatedUser?.employee?.tenure,
+      });
     } catch (error) {
       throw new AppError('Falha ao atualizar usuário', 500);
     }
   }
 
   public async create(request: Request, response: Response): Promise<void> {
-    const { name, email, password, role, points } = request.body;
-
-    const userPassword = password || '654321';
-
-    const passwordHash = await this.hashProvider.generateHash(userPassword);
+    const { name, email, cpf, password, role, tenure, isStudent } =
+      request.body;
+    const currentUser = request.user;
 
     try {
-      const user = await prisma.user.create({
+      // Verificar se está tentando criar funcionário
+      if (role) {
+        if (!currentUser?.roles.includes('ADMIN')) {
+          throw new AppError(
+            'Apenas administradores podem criar funcionários',
+            403
+          );
+        }
+      }
+
+      // Verificar se está tentando criar aluno
+      if (isStudent) {
+        if (
+          !currentUser?.roles.includes('ADMIN') &&
+          !currentUser?.roles.includes('RECEPTIONIST')
+        ) {
+          throw new AppError(
+            'Apenas administradores e recepcionistas podem criar alunos',
+            403
+          );
+        }
+      }
+
+      const passwordHash = await this.hashProvider.generateHash(
+        password || '654321'
+      );
+
+      // Criar pessoa
+      const person = await prisma.person.create({
         data: {
           name,
           email,
+          cpf,
           password: passwordHash,
-          points: Number(points),
-          role: role ?? 'USER',
           avatar: '',
         },
       });
 
+      // Criar funcionário se especificado
+      if (role) {
+        await prisma.employee.create({
+          data: {
+            role: role as EmployeeRole,
+            tenure: tenure ? parseInt(tenure) : 0,
+            person: { connect: { id: person.id } },
+          },
+        });
+      }
+
+      // Criar aluno se especificado
+      if (isStudent) {
+        await prisma.student.create({
+          data: {
+            person: { connect: { id: person.id } },
+          },
+        });
+      }
+
+      // Atualizar foto se fornecida
       if (request.file) {
         const avatarUrl = await this.storageProvider.upload(request.file);
-
-        await prisma.user.update({
-          where: { id: user.id },
+        await prisma.person.update({
+          where: { id: person.id },
           data: { avatar: avatarUrl },
         });
       }
-    } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+
+      response.status(201).json({
+        message: 'Usuário registrado com sucesso',
+        userId: person.id,
+      });
+    } catch (error: any) {
+      if (error.code === 'P2002') {
         throw new AppError('Usuário já cadastrado', 400);
+      } else if (error instanceof AppError) {
+        throw error;
       } else {
-        throw new AppError('Falha ao salvar avatar', 500);
+        throw new AppError('Falha ao criar usuário', 500);
       }
     }
-
-    response.status(201).json({ message: 'Usuário registrado com sucesso' });
   }
 
   public async delete(request: Request, response: Response): Promise<void> {
     const { id } = request.params;
 
     try {
-      await prisma.user.delete({
-        where: {
-          id: Number(id),
-        },
+      // Remover especializações primeiro
+      await prisma.employee.deleteMany({ where: { personId: Number(id) } });
+      await prisma.student.deleteMany({ where: { personId: Number(id) } });
+
+      // Remover pessoa
+      await prisma.person.delete({
+        where: { id: Number(id) },
       });
     } catch (error) {
-      throw new AppError('Usuario não encontrado', 404);
+      throw new AppError('Usuário não encontrado', 404);
     }
 
     response.status(200).send();
@@ -173,16 +316,12 @@ export class UserController {
     const passwordHash = await this.hashProvider.generateHash('654321');
 
     try {
-      await prisma.user.update({
-        where: {
-          id: Number(id),
-        },
-        data: {
-          password: passwordHash,
-        },
+      await prisma.person.update({
+        where: { id: Number(id) },
+        data: { password: passwordHash },
       });
     } catch (error) {
-      throw new AppError('Usuario não encontrado', 404);
+      throw new AppError('Usuário não encontrado', 404);
     }
 
     response.status(200).send();
@@ -194,21 +333,41 @@ export class UserController {
   ): Promise<void> {
     const userId = request.user.id;
 
-    const user = await prisma.user.findUnique({
+    const person = await prisma.person.findUnique({
+      where: { id: Number(userId) },
       select: {
+        id: true,
         name: true,
         email: true,
-        avatarUrl: true,
-        points: true,
         avatar: true,
+        employee: {
+          select: {
+            role: true,
+          },
+        },
+        student: {
+          select: {
+            id: true,
+          },
+        },
       },
-      where: { id: userId },
     });
 
-    if (user === null)
+    if (!person) {
       response.status(404).json({ message: 'Usuário não encontrado' });
+      return;
+    }
 
-    response.json(user);
+    response.json({
+      id: person.id,
+      name: person.name,
+      email: person.email,
+      avatar: person.avatar,
+      roles: [
+        ...(person.employee ? [person.employee.role] : []),
+        ...(person.student ? ['STUDENT'] : []),
+      ],
+    });
   }
 
   public async updateProfile(
@@ -221,32 +380,54 @@ export class UserController {
 
     try {
       if (request.file) {
-        const user = await prisma.user.findUnique({
-          select: { avatar: true },
-          where: { id: userId },
+        const person = await prisma.person.findUnique({
+          where: { id: Number(userId) },
         });
 
-        if (user?.avatar) {
-          await this.storageProvider.delete(user?.avatar ?? '');
+        if (person?.avatar) {
+          await this.storageProvider.delete(person.avatar);
         }
 
         const avatarUrl = await this.storageProvider.upload(request.file);
 
-        await prisma.user.update({
-          where: { id: userId },
+        await prisma.person.update({
+          where: { id: Number(userId) },
           data: { avatar: avatarUrl },
         });
       }
 
-      const updateUser = await prisma.user.update({
-        where: { id: userId },
+      const updatedPerson = await prisma.person.update({
+        where: { id: Number(userId) },
         data: { name },
-        select: { name: true, email: true, avatarUrl: true, points: true },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          avatar: true,
+          employee: {
+            select: {
+              role: true,
+            },
+          },
+          student: {
+            select: {
+              id: true,
+            },
+          },
+        },
       });
 
-      response.json(updateUser);
+      response.json({
+        name: updatedPerson.name,
+        email: updatedPerson.email,
+        avatar: updatedPerson.avatar,
+        roles: [
+          ...(updatedPerson.employee ? [updatedPerson.employee.role] : []),
+          ...(updatedPerson.student ? ['STUDENT'] : []),
+        ],
+      });
     } catch (error) {
-      throw new AppError('Falha ao atualizar usuário', 500);
+      throw new AppError('Falha ao atualizar perfil', 500);
     }
   }
 
@@ -261,105 +442,14 @@ export class UserController {
     const passwordHash = await this.hashProvider.generateHash(password);
 
     try {
-      const updateUser = await prisma.user.update({
-        where: { id: userId },
+      await prisma.person.update({
+        where: { id: Number(userId) },
         data: { password: passwordHash },
-        select: { name: true, email: true, avatarUrl: true, points: true },
       });
 
-      response.json(updateUser);
+      response.json({ message: 'Senha atualizada com sucesso' });
     } catch (error) {
-      throw new AppError('Falha ao atualizar senha do usuário', 500);
+      throw new AppError('Falha ao atualizar senha', 500);
     }
-  }
-
-  public async scoreboard(_: Request, response: Response): Promise<void> {
-    const usersScore = await prisma.user.findMany({
-      select: {
-        name: true,
-        points: true,
-        avatarUrl: true,
-        firstBloods: {
-          select: {
-            name: true,
-          },
-        },
-      },
-      orderBy: {
-        points: 'desc',
-      },
-      where: {
-        role: {
-          not: 'ADMIN',
-        },
-      },
-    });
-
-    const allFlags = await prisma.flag.findMany();
-    const allFlagPoints = allFlags.reduce((accumulator, flag) => {
-      return accumulator + flag.points;
-    }, 0);
-    const maxPoints = Math.round(allFlagPoints * 2);
-
-    const scoreboard = usersScore.map((userScore) => ({
-      ...userScore,
-      firstBloods: userScore.firstBloods.length,
-    }));
-
-    response.status(200).json({ scoreboard, maxPoints });
-  }
-
-  public async maxPoints(_: Request, response: Response): Promise<void> {
-    const allFlags = await prisma.flag.findMany();
-
-    const allFlagPoints = allFlags.reduce((accumulator, flag) => {
-      return accumulator + flag.points;
-    }, 0);
-
-    const maxPoints = Math.round(allFlagPoints * 2);
-
-    response.status(200).json({ maxPoints });
-  }
-
-  public async activities(_: Request, response: Response): Promise<void> {
-    const flags = await prisma.flag.findMany({
-      include: {
-        activities: {
-          include: {
-            flag: {
-              select: {
-                points: true,
-                difficulty: true,
-                challenge: {
-                  select: {
-                    name: true,
-                  },
-                },
-              },
-            },
-            user: {
-              select: {
-                avatarUrl: true,
-                name: true,
-                points: true,
-              },
-            },
-          },
-        },
-      },
-    });
-
-    const flagsActivities: Activity[] = [];
-
-    flags.forEach((flag) => flagsActivities.push(...flag.activities));
-
-    flagsActivities.sort((activityA, activityB) => {
-      const activityADate = new Date(activityA.createdAt);
-      const activityBDate = new Date(activityB.createdAt);
-
-      return Number(activityBDate) - Number(activityADate);
-    });
-
-    response.status(200).json({ activities: flagsActivities });
   }
 }

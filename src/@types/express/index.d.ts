@@ -4,6 +4,14 @@ declare global {
     interface Request {
       user: {
         id: number;
+        name: string;
+        email: string;
+        roles: string[];
+        avatar?: string;
+        cpf: string;
+        tenure?: number;
+        iat: number;
+        exp: number;
       };
     }
   }

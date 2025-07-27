@@ -1,23 +1,14 @@
 import { PrismaClient } from '@prisma/client';
+import type { Person } from '@prisma/client';
 
 export const prisma = new PrismaClient().$extends({
   result: {
-    user: {
+    person: {
       avatarUrl: {
         needs: { avatar: true },
-        compute(user) {
-          return user.avatar !== null && user.avatar !== ''
-            ? `${process.env.STORAGE_LOCATION}/${user.avatar}`
-            : null;
-        },
-      },
-    },
-    challenge: {
-      imageUrl: {
-        needs: { image: true },
-        compute(challenge) {
-          return challenge.image !== null && challenge.image !== ''
-            ? `${process.env.STORAGE_LOCATION}/${challenge.image}`
+        compute(person: Person) {
+          return person.avatar !== null && person.avatar !== ''
+            ? `${process.env.STORAGE_LOCATION}/${person.avatar}`
             : null;
         },
       },
