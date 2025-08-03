@@ -1,10 +1,12 @@
+/* eslint-disable @typescript-eslint/explicit-function-return-type */
+/* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 import { PrismaClient } from '@prisma/client';
 import { hash } from 'bcrypt';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  // Limpar o banco de dados (cuidado em produção!)
+  // Limpar tabelas na ordem correta para evitar erros de chave estrangeira
   await prisma.physicalAssessment.deleteMany();
   await prisma.workoutPlan.deleteMany();
   await prisma.membership.deleteMany();
@@ -12,162 +14,180 @@ async function main() {
   await prisma.student.deleteMany();
   await prisma.person.deleteMany();
 
-  // Criar pessoas (usuários)
   const password = await hash('123456', 8);
 
-  const people = await prisma.person.createMany({
-    data: [
-      // Admin
-      {
-        name: 'Admin Master',
-        email: 'admin@academia.com',
-        cpf: '111.222.333-44',
-        password,
-      },
-
-      // Recepcionistas
-      {
-        name: 'Recepcionista Ana',
-        email: 'ana.recep@academia.com',
-        cpf: '222.333.444-55',
-        password,
-      },
-      {
-        name: 'Recepcionista Carlos',
-        email: 'carlos.recep@academia.com',
-        cpf: '333.444.555-66',
-        password,
-      },
-
-      // Professores
-      {
-        name: 'Professor João',
-        email: 'joao.prof@academia.com',
-        cpf: '444.555.666-77',
-        password,
-      },
-      {
-        name: 'Professora Maria',
-        email: 'maria.prof@academia.com',
-        cpf: '555.666.777-88',
-        password,
-      },
-
-      // Estagiários
-      {
-        name: 'Estagiário Pedro',
-        email: 'pedro.estag@academia.com',
-        cpf: '666.777.888-99',
-        password,
-      },
-
-      // Alunos
-      {
-        name: 'Aluno Lucas',
-        email: 'lucas.aluno@email.com',
-        cpf: '777.888.999-00',
-        password,
-      },
-      {
-        name: 'Aluna Sofia',
-        email: 'sofia.aluna@email.com',
-        cpf: '888.999.000-11',
-        password,
-      },
-      {
-        name: 'Aluno Miguel',
-        email: 'miguel.aluno@email.com',
-        cpf: '999.000.111-22',
-        password,
-      },
-      {
-        name: 'Aluno Funcionário',
-        email: 'func.aluno@academia.com',
-        cpf: '123.456.789-00',
-        password,
-      },
-    ],
+  // Criar pessoas individualmente para obter seus IDs
+  const admin = await prisma.person.create({
+    data: {
+      name: 'Admin Master',
+      email: 'admin@academia.com',
+      cpf: '111.222.333-44',
+      password,
+    },
   });
 
-  // Obter IDs das pessoas criadas
-  const persons = await prisma.person.findMany({
-    select: { id: true, email: true },
+  const recepcionistaAna = await prisma.person.create({
+    data: {
+      name: 'Recepcionista Ana',
+      email: 'ana.recep@academia.com',
+      cpf: '222.333.444-55',
+      password,
+    },
   });
 
-  const getPersonId = (email: string) => {
-    return persons.find((p) => p.email === email)?.id || 0;
-  };
+  const recepcionistaCarlos = await prisma.person.create({
+    data: {
+      name: 'Recepcionista Carlos',
+      email: 'carlos.recep@academia.com',
+      cpf: '333.444.555-66',
+      password,
+    },
+  });
+
+  const professorJoao = await prisma.person.create({
+    data: {
+      name: 'Professor João',
+      email: 'joao.prof@academia.com',
+      cpf: '444.555.666-77',
+      password,
+    },
+  });
+
+  const professoraMaria = await prisma.person.create({
+    data: {
+      name: 'Professora Maria',
+      email: 'maria.prof@academia.com',
+      cpf: '555.666.777-88',
+      password,
+    },
+  });
+
+  const estagiarioPedro = await prisma.person.create({
+    data: {
+      name: 'Estagiário Pedro',
+      email: 'pedro.estag@academia.com',
+      cpf: '666.777.888-99',
+      password,
+    },
+  });
+
+  const alunoLucas = await prisma.person.create({
+    data: {
+      name: 'Aluno Lucas',
+      email: 'lucas.aluno@email.com',
+      cpf: '777.888.999-00',
+      password,
+    },
+  });
+
+  const alunaSofia = await prisma.person.create({
+    data: {
+      name: 'Aluna Sofia',
+      email: 'sofia.aluna@email.com',
+      cpf: '888.999.000-11',
+      password,
+    },
+  });
+
+  const alunoMiguel = await prisma.person.create({
+    data: {
+      name: 'Aluno Miguel',
+      email: 'miguel.aluno@email.com',
+      cpf: '999.000.111-22',
+      password,
+    },
+  });
+
+  const alunoFuncionario = await prisma.person.create({
+    data: {
+      name: 'Aluno Funcionário',
+      email: 'func.aluno@academia.com',
+      cpf: '123.456.789-00',
+      password,
+    },
+  });
 
   // Criar especializações (Employee e Student)
-  await prisma.employee.createMany({
-    data: [
-      // Admin
-      {
-        personId: getPersonId('admin@academia.com'),
-        role: 'ADMIN',
-        tenure: 24,
-      },
-
-      // Recepcionistas
-      {
-        personId: getPersonId('ana.recep@academia.com'),
-        role: 'RECEPTIONIST',
-        tenure: 12,
-      },
-      {
-        personId: getPersonId('carlos.recep@academia.com'),
-        role: 'RECEPTIONIST',
-        tenure: 6,
-      },
-
-      // Professores
-      {
-        personId: getPersonId('joao.prof@academia.com'),
-        role: 'TEACHER',
-        tenure: 18,
-      },
-      {
-        personId: getPersonId('maria.prof@academia.com'),
-        role: 'TEACHER',
-        tenure: 30,
-      },
-
-      // Estagiário
-      {
-        personId: getPersonId('pedro.estag@academia.com'),
-        role: 'TRAINEE',
-        tenure: 3,
-      },
-
-      // Funcionário que também é aluno
-      {
-        personId: getPersonId('func.aluno@academia.com'),
-        role: 'TEACHER',
-        tenure: 12,
-      },
-    ],
+  const adminEmployee = await prisma.employee.create({
+    data: {
+      role: 'ADMIN',
+      tenure: 24,
+      person: { connect: { id: admin.id } },
+    },
   });
 
-  await prisma.student.createMany({
-    data: [
-      // Alunos regulares
-      { personId: getPersonId('lucas.aluno@email.com') },
-      { personId: getPersonId('sofia.aluna@email.com') },
-      { personId: getPersonId('miguel.aluno@email.com') },
-
-      // Funcionário que também é aluno
-      { personId: getPersonId('func.aluno@academia.com') },
-    ],
+  const anaEmployee = await prisma.employee.create({
+    data: {
+      role: 'RECEPTIONIST',
+      tenure: 12,
+      person: { connect: { id: recepcionistaAna.id } },
+    },
   });
 
-  // Obter IDs dos alunos
-  const students = await prisma.student.findMany({
-    select: { id: true, person: { select: { email: true } } },
+  const carlosEmployee = await prisma.employee.create({
+    data: {
+      role: 'RECEPTIONIST',
+      tenure: 6,
+      person: { connect: { id: recepcionistaCarlos.id } },
+    },
   });
 
-  const getStudentId = (email: string) => {
-    return students.find((s) => s.person.email === email)?.id || 0;
-  };
+  const joaoEmployee = await prisma.employee.create({
+    data: {
+      role: 'TEACHER',
+      tenure: 18,
+      person: { connect: { id: professorJoao.id } },
+    },
+  });
+
+  const mariaEmployee = await prisma.employee.create({
+    data: {
+      role: 'TEACHER',
+      tenure: 30,
+      person: { connect: { id: professoraMaria.id } },
+    },
+  });
+
+  const pedroEmployee = await prisma.employee.create({
+    data: {
+      role: 'TRAINEE',
+      tenure: 3,
+      person: { connect: { id: estagiarioPedro.id } },
+    },
+  });
+
+  const funcEmployee = await prisma.employee.create({
+    data: {
+      role: 'TEACHER',
+      tenure: 12,
+      person: { connect: { id: alunoFuncionario.id } },
+    },
+  });
+
+  // Criar alunos
+  const lucasStudent = await prisma.student.create({
+    data: {
+      person: { connect: { id: alunoLucas.id } },
+    },
+  });
+
+  const sofiaStudent = await prisma.student.create({
+    data: {
+      person: { connect: { id: alunaSofia.id } },
+    },
+  });
+
+  const miguelStudent = await prisma.student.create({
+    data: {
+      person: { connect: { id: alunoMiguel.id } },
+    },
+  });
+
+  const funcStudent = await prisma.student.create({
+    data: {
+      person: { connect: { id: alunoFuncionario.id } },
+    },
+  });
 
   // Obter IDs dos funcionários (para referenciar na PhysicalAssessment)
   const employees = await prisma.employee.findMany({
@@ -178,45 +198,49 @@ async function main() {
     return employees.find((e) => e.person.email === email)?.id || 0;
   };
 
+  const students = await prisma.student.findMany({
+    select: { id: true, person: { select: { email: true } } },
+  });
+
+  const getStudentId = (email: string) => {
+    return students.find((e) => e.person.email === email)?.id || 0;
+  };
+
   // Criar matrículas
   await prisma.membership.createMany({
     data: [
       // Matrícula ativa para Lucas
       {
-        studentId: getStudentId('lucas.aluno@email.com'),
+        studentId: lucasStudent.id,
         startDate: new Date('2024-01-01'),
         status: 'ACTIVE',
         type: 'MONTHLY',
       },
-
       // Matrícula ativa para Sofia
       {
-        studentId: getStudentId('sofia.aluna@email.com'),
+        studentId: sofiaStudent.id,
         startDate: new Date('2024-02-15'),
         status: 'ACTIVE',
         type: 'QUARTERLY',
       },
-
       // Matrícula cancelada para Miguel (antiga)
       {
-        studentId: getStudentId('miguel.aluno@email.com'),
+        studentId: miguelStudent.id,
         startDate: new Date('2023-11-01'),
         endDate: new Date('2024-01-31'),
         status: 'CANCELLED',
         type: 'MONTHLY',
       },
-
       // Nova matrícula ativa para Miguel (substitui a anterior)
       {
-        studentId: getStudentId('miguel.aluno@email.com'),
+        studentId: miguelStudent.id,
         startDate: new Date('2024-02-01'),
         status: 'ACTIVE',
         type: 'ANNUAL',
       },
-
       // Matrícula para aluno funcionário
       {
-        studentId: getStudentId('func.aluno@academia.com'),
+        studentId: funcStudent.id,
         startDate: new Date('2024-01-10'),
         status: 'ACTIVE',
         type: 'SEMESTERLY',
@@ -228,28 +252,88 @@ async function main() {
   await prisma.workoutPlan.createMany({
     data: [
       {
-        studentId: getStudentId('lucas.aluno@email.com'),
+        studentId: lucasStudent.id,
         content: {
-          upperBody: [
-            { exercise: 'Supino reto', sets: 4, reps: '8-10' },
-            { exercise: 'Remada curvada', sets: 3, reps: '10-12' },
-          ],
-          lowerBody: [
-            { exercise: 'Agachamento livre', sets: 4, reps: '8-10' },
-            { exercise: 'Leg press', sets: 3, reps: '12-15' },
+          nome: 'Treino ABC - Hipertrofia',
+          objetivo: 'Ganho de Massa Muscular',
+          validoAte: '30/09/2023',
+          observacoes:
+            'Focar na execução correta dos movimentos e controle da fase excêntrica.',
+          grupos: [
+            {
+              nome: 'Peito e Tríceps',
+              exercicios: [
+                {
+                  nome: 'Supino Reto',
+                  series: '4',
+                  repeticoes: '10-12',
+                  carga: '40kg',
+                  descanso: '90s',
+                },
+                {
+                  nome: 'Supino Inclinado Halteres',
+                  series: '3',
+                  repeticoes: '12-15',
+                  carga: '18kg',
+                  descanso: '60s',
+                },
+              ],
+            },
+            {
+              nome: 'Costas e Bíceps',
+              exercicios: [
+                {
+                  nome: 'Barra Fixa',
+                  series: '4',
+                  repeticoes: '8-10',
+                  carga: 'Peso Corporal',
+                  descanso: '90s',
+                },
+              ],
+            },
           ],
         },
         employeeId: getEmployeeId('joao.prof@academia.com'),
       },
       {
-        studentId: getStudentId('sofia.aluna@email.com'),
+        studentId: sofiaStudent.id,
         content: {
-          cardio: [
-            { exercise: 'Esteira', duration: '30 min', intensity: 'Moderada' },
-          ],
-          strength: [
-            { exercise: 'Leg press', sets: 3, reps: '12-15' },
-            { exercise: 'Cadeira extensora', sets: 3, reps: '15' },
+          nome: 'Treino Feminino - Resistência',
+          objetivo: 'Melhoria da Resistência Cardiovascular',
+          validoAte: '30/10/2023',
+          observacoes: 'Manter frequência cardíaca na zona alvo.',
+          grupos: [
+            {
+              nome: 'Cardio',
+              exercicios: [
+                {
+                  nome: 'Esteira',
+                  series: '1',
+                  repeticoes: '30 min',
+                  carga: 'Velocidade 6 km/h',
+                  descanso: '0s',
+                },
+              ],
+            },
+            {
+              nome: 'Membros Inferiores',
+              exercicios: [
+                {
+                  nome: 'Leg Press',
+                  series: '3',
+                  repeticoes: '15-20',
+                  carga: '50kg',
+                  descanso: '60s',
+                },
+                {
+                  nome: 'Cadeira Extensora',
+                  series: '3',
+                  repeticoes: '15',
+                  carga: '30kg',
+                  descanso: '45s',
+                },
+              ],
+            },
           ],
         },
         employeeId: getEmployeeId('maria.prof@academia.com'),
