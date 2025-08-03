@@ -11,25 +11,15 @@ export class WorkoutPlanController {
   ): Promise<void> {
     const { studentId } = request.params;
     const content = request.body;
-    const teacherPersonId = request.user.id;
-
-    console.log('=== WorkoutPlanController.createOrUpdate ===');
-    console.log('Student ID:', studentId);
-    console.log('Teacher Person ID:', teacherPersonId);
-    console.log('Request body:', JSON.stringify(content, null, 2));
-    console.log('User roles:', request.user.roles);
+    const teacherId = request.user.employeeId;
 
     try {
-      console.log('Validando schema...');
       workoutPlanSchema.createUpdate.parse(content);
-      console.log('Schema validado com sucesso!');
 
       // Verificar se o usuário é professor
       const isTeacher =
         request.user.roles.includes('TEACHER') ||
         request.user.roles.includes('ADMIN');
-
-      console.log('Is teacher?', isTeacher);
 
       if (!isTeacher) {
         throw new AppError(
@@ -39,65 +29,32 @@ export class WorkoutPlanController {
       }
 
       // Verificar se o aluno existe
-      console.log('Buscando aluno com ID:', studentId, 'Tipo:', typeof studentId);
       const student = await prisma.student.findUnique({
         where: { id: Number(studentId) },
       });
 
-      console.log('Student found:', !!student);
-      if (student) {
-        console.log('Student details:', {
-          id: student.id,
-          personId: student.personId,
-          createdAt: student.createdAt
-        });
-      }
-
       if (!student) {
-        // Vamos verificar se há alunos no banco
-        const allStudents = await prisma.student.findMany({
-          include: {
-            person: {
-              select: {
-                id: true,
-                name: true,
-                email: true
-              }
-            }
-          }
-        });
-        console.log('Todos os alunos no banco:', allStudents.map(s => ({
-          studentId: s.id,
-          personId: s.personId,
-          name: s.person.name,
-          email: s.person.email
-        })));
-        
         throw new AppError('Aluno não encontrado', 404);
       }
 
       // Upsert (cria ou atualiza) a ficha de treino
-      console.log('Salvando no banco de dados...');
       const workoutPlan = await prisma.workoutPlan.upsert({
-        where: { studentId: student.personId }, // Usar personId do student
+        where: { studentId: Number(studentId) },
         update: {
           content,
-          employeeId: teacherPersonId, // Usar personId do teacher
+          employeeId: Number(teacherId),
         },
         create: {
           content,
-          studentId: student.personId, // Usar personId do student
-          employeeId: teacherPersonId, // Usar personId do teacher
+          studentId: Number(studentId),
+          employeeId: Number(teacherId),
         },
       });
 
-      console.log('Workout plan salvo com sucesso:', workoutPlan.id);
       response.status(200).json(workoutPlan);
     } catch (error) {
-      console.error('Erro no createOrUpdate:', error);
       if (error instanceof z.ZodError) {
-        console.error('Zod validation errors:', error.errors);
-        throw new AppError('Formato da ficha de treino inválido: ' + error.errors.map(e => e.message).join(', '), 400);
+        throw new AppError('Formato da ficha de treino inválido', 400);
       }
       throw error;
     }
@@ -106,18 +63,11 @@ export class WorkoutPlanController {
   public async get(request: Request, response: Response): Promise<void> {
     const { studentId } = request.params;
 
+    console.log('studentId', studentId);
+
     try {
-      // Primeiro buscar o student para obter o personId
-      const student = await prisma.student.findUnique({
-        where: { id: Number(studentId) },
-      });
-
-      if (!student) {
-        throw new AppError('Aluno não encontrado', 404);
-      }
-
       const workoutPlan = await prisma.workoutPlan.findUnique({
-        where: { studentId: student.personId }, // Usar personId do student
+        where: { studentId: Number(studentId) },
         include: {
           student: {
             select: {
@@ -150,6 +100,7 @@ export class WorkoutPlanController {
         teacherName: workoutPlan.updatedBy.person.name,
       });
     } catch (error) {
+      console.error('Erro ao buscar ficha de treino:', error);
       throw new AppError('Falha ao buscar ficha de treino', 500);
     }
   }

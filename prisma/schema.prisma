@@ -85,9 +85,9 @@ model Membership {
 model WorkoutPlan {
   id        Int          @id @default(autoincrement())
   content   Json?
-  student   Student         @relation(fields: [studentId], references: [personId])
+  student   Student      @relation(fields: [studentId], references: [id])
   studentId Int @unique
-  updatedBy Employee      @relation(fields: [employeeId], references: [personId])
+  updatedBy Employee      @relation(fields: [employeeId], references: [id])
   employeeId Int @unique
 
   createdAt DateTime        @default(now())
