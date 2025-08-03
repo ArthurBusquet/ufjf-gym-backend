@@ -23,6 +23,9 @@ export const UserController = new UserControllerClass();
 // Rotas autenticadas para perfil do usuário
 usersRoutes.get('/profile', ensureAuthenticated, UserController.showProfile);
 
+// Rota específica para perfil completo do aluno
+usersRoutes.get('/students/profile', ensureAuthenticated, UserController.getStudentProfile.bind(UserController));
+
 usersRoutes.put(
   '/profile',
   upload.single('avatar'),

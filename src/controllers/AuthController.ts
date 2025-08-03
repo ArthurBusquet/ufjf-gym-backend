@@ -38,6 +38,9 @@ export class AuthController {
 
     const { secret, expiration } = authConfig.options.jwt;
 
+    console.log('Secret usado:', secret);
+    console.log('Expiration:', expiration);
+
     // Determinar os papéis do usuário
     const roles: string[] = [];
 
@@ -48,6 +51,8 @@ export class AuthController {
     if (person.student) {
       roles.push('STUDENT');
     }
+
+    console.log('Roles determinados:', roles);
 
     // Formatar dados do usuário para o token
     const formatedUser = {
@@ -61,6 +66,10 @@ export class AuthController {
       studentId: person.student?.id,
       employeeId: person.employee?.id,
     };
+
+    console.log('Dados do usuário que serão incluídos no token:', formatedUser);
+
+    console.log('Dados do usuário formatados:', formatedUser);
 
     const token = sign(formatedUser, secret, {
       expiresIn: expiration,

@@ -169,6 +169,15 @@ async function main() {
     return students.find((s) => s.person.email === email)?.id || 0;
   };
 
+  // Obter IDs dos funcionários (para referenciar na PhysicalAssessment)
+  const employees = await prisma.employee.findMany({
+    select: { id: true, person: { select: { email: true } } },
+  });
+
+  const getEmployeeId = (email: string) => {
+    return employees.find((e) => e.person.email === email)?.id || 0;
+  };
+
   // Criar matrículas
   await prisma.membership.createMany({
     data: [
@@ -230,7 +239,7 @@ async function main() {
             { exercise: 'Leg press', sets: 3, reps: '12-15' },
           ],
         },
-        employeeId: getPersonId('joao.prof@academia.com'),
+        employeeId: getEmployeeId('joao.prof@academia.com'),
       },
       {
         studentId: getStudentId('sofia.aluna@email.com'),
@@ -243,7 +252,7 @@ async function main() {
             { exercise: 'Cadeira extensora', sets: 3, reps: '15' },
           ],
         },
-        employeeId: getPersonId('maria.prof@academia.com'),
+        employeeId: getEmployeeId('maria.prof@academia.com'),
       },
     ],
   });
@@ -253,7 +262,7 @@ async function main() {
     data: [
       {
         studentId: getStudentId('lucas.aluno@email.com'),
-        teacherId: getPersonId('joao.prof@academia.com'),
+        teacherId: getEmployeeId('joao.prof@academia.com'),
         height: 1.78,
         weight: 75.5,
         bodyFat: 18.2,
@@ -261,7 +270,7 @@ async function main() {
       },
       {
         studentId: getStudentId('sofia.aluna@email.com'),
-        teacherId: getPersonId('maria.prof@academia.com'),
+        teacherId: getEmployeeId('maria.prof@academia.com'),
         height: 1.65,
         weight: 62.0,
         bodyFat: 22.5,
@@ -269,7 +278,7 @@ async function main() {
       },
       {
         studentId: getStudentId('miguel.aluno@email.com'),
-        teacherId: getPersonId('joao.prof@academia.com'),
+        teacherId: getEmployeeId('joao.prof@academia.com'),
         height: 1.82,
         weight: 85.0,
         bodyFat: 25.8,
