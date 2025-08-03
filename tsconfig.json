@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "target": "es2016" /* Set the JavaScript language version for emitted JavaScript and include compatible library declarations. */,
+    "module": "commonjs",
+    "strict": true /* Specify what module code is generated. */,
+    "rootDir": "./src" /* Specify the root folder within your source files. */,
+    "outDir": "./dist" /* Specify an output folder for all emitted files. */,
+    "baseUrl": "./src",
+    "typeRoots": ["./node_modules/@types", "./src/@types"],
+    "paths": {
+      "@controllers/*": ["controllers/*"],
+      "@routes/*": ["routes/*"],
+      "@services/*": ["services/*"],
+      "@errors/*": ["errors/*"],
+      "@providers/*": ["providers/*"],
+      "@config/*": ["config/*"],
+      "@middlewares/*": ["middlewares/*"],
+      "@schemas/*": ["schemas/*"]
+    },
+    "esModuleInterop": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true
+  }
+}

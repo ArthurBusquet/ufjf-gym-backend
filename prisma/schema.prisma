@@ -1,0 +1,110 @@
+// schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum EmployeeRole {
+  ADMIN
+  RECEPTIONIST
+  TEACHER
+  TRAINEE
+}
+
+enum MembershipStatus {
+  ACTIVE
+  CANCELLED
+  SUSPENDED
+}
+
+enum MembershipType {
+  MONTHLY
+  QUARTERLY
+  SEMESTERLY
+  ANNUAL
+}
+
+model Person {
+  id        Int   @id @default(autoincrement())
+  cpf       String   @unique
+  name      String
+  email     String   @unique
+  avatar     String?
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  employee  Employee?
+  student   Student?
+}
+
+model Employee {
+  id        Int       @id @default(autoincrement())
+  tenure    Int?        
+  role      EmployeeRole
+  person    Person       @relation(fields: [personId], references: [id])
+  personId  Int       @unique
+
+  givenAssessments PhysicalAssessment[] @relation("TeacherAssessments")
+  updatedWorkoutPlans WorkoutPlan[]
+
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+}
+
+model Student {
+  id        Int       @id @default(autoincrement())
+  person    Person       @relation(fields: [personId], references: [id])
+  personId  Int       @unique
+
+  memberships Membership[]
+  workoutPlan WorkoutPlan?
+  assessments PhysicalAssessment[] @relation("StudentAssessments")
+
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+}
+
+model Membership {
+  id        Int          @id @default(autoincrement())
+  startDate DateTime
+  endDate   DateTime?
+  status    MembershipStatus
+  type      MembershipType
+  student   Student         @relation(fields: [studentId], references: [id])
+  studentId Int
+
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+}
+
+model WorkoutPlan {
+  id        Int          @id @default(autoincrement())
+  content   Json?
+  student   Student         @relation(fields: [studentId], references: [personId])
+  studentId Int @unique
+  updatedBy Employee      @relation(fields: [employeeId], references: [personId])
+  employeeId Int @unique
+
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+}
+
+model PhysicalAssessment {
+  id          Int        @id @default(autoincrement())
+  height      Float
+  weight      Float
+  bodyFat     Float?
+  observations String?
+  student     Student       @relation("StudentAssessments", fields: [studentId], references: [id])
+  studentId   Int
+  teacher     Employee      @relation("TeacherAssessments", fields: [teacherId], references: [id])
+  teacherId   Int
+
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
