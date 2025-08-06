@@ -1,0 +1,39 @@
+# UFJF GYM
+
+Este projeto é o backend da aplicação UFJF construída com **Node.js**, **TypeScript**, **Prisma ORM** e **Docker**.
+
+---
+
+## 🛠 Tecnologias Utilizadas
+
+- [Node.js](https://nodejs.org/)
+- [TypeScript](https://www.typescriptlang.org/)
+- [Express](https://expressjs.com/)
+- [Prisma ORM](https://www.prisma.io/)
+- [Docker](https://www.docker.com/)
+- [PostgreSQL](https://www.postgresql.org/) (ou outro banco compatível)
+- [dotenv](https://github.com/motdotla/dotenv) para variáveis de ambiente
+
+---
+
+## 🚀 Como rodar o projeto
+
+### ✅ Pré-requisitos
+
+- [Docker](https://www.docker.com/get-started)
+- [Docker Compose](https://docs.docker.com/compose/)
+- [Node.js](https://nodejs.org/) e [Yarn](https://yarnpkg.com/) ou [npm](https://www.npmjs.com/)
+- Versão sugerida para o Node: 20.18.0
+
+---
+
+### 🔧 Variáveis de ambiente
+
+Crie um arquivo `.env` na raiz do projeto com o seguinte conteúdo:
+
+# DATABASE
+
+DATABASE_URL="postgresql://root:root@localhost:5432/mydb"
+
+JWT_SECRET=ufjf-gym
+JWT_EXPIRATION=5d

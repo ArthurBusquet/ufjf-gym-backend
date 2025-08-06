@@ -333,9 +333,6 @@ export class UserController {
     response: Response
   ): Promise<void> {
     const userId = request.user.id;
-    
-    console.log('ID do usuário do token:', userId);
-    console.log('Dados completos do usuário do token:', request.user);
 
     const person = await prisma.person.findUnique({
       where: { id: Number(userId) },
@@ -361,12 +358,9 @@ export class UserController {
     });
 
     if (!person) {
-      console.log('Pessoa não encontrada para o ID:', userId);
       response.status(404).json({ message: 'Usuário não encontrado' });
       return;
     }
-
-    console.log('Pessoa encontrada:', person);
 
     const responseData = {
       id: person.id,
@@ -379,7 +373,6 @@ export class UserController {
       ],
     };
 
-    console.log('Dados de resposta:', responseData);
     response.json(responseData);
   }
 
@@ -525,7 +518,6 @@ export class UserController {
     request: Request,
     response: Response
   ): Promise<void> {
-    console.log('Listando funcionários...');
     try {
       // Buscar todos os funcionários com suas informações
       const employees = await prisma.employee.findMany({
@@ -556,7 +548,6 @@ export class UserController {
 
       response.status(200).json(formattedEmployees);
     } catch (error) {
-      console.log('AAAAAAAAAAA');
       throw new AppError('Falha ao listar funcionários', 500);
     }
   }
@@ -566,8 +557,6 @@ export class UserController {
     response: Response
   ): Promise<void> {
     const userId = request.user.id;
-    
-    console.log('Buscando perfil do aluno com ID:', userId);
 
     try {
       // Buscar dados completos do aluno
@@ -656,9 +645,12 @@ export class UserController {
 
       // Formatar datas
       const membroDesde = student.person.createdAt.toLocaleDateString('pt-BR');
-      const vencimento = student.memberships.length > 0 
-        ? new Date(student.memberships[0].endDate || new Date()).toLocaleDateString('pt-BR')
-        : 'Não definido';
+      const vencimento =
+        student.memberships.length > 0
+          ? new Date(
+              student.memberships[0].endDate || new Date()
+            ).toLocaleDateString('pt-BR')
+          : 'Não definido';
 
       const responseData = {
         id: student.person.id,
@@ -676,15 +668,15 @@ export class UserController {
         email: student.person.email,
         cpf: student.person.cpf,
         avatar: student.person.avatar,
-        activeMembership: student.memberships.length > 0 ? student.memberships[0] : null,
-        latestAssessment: student.assessments.length > 0 ? student.assessments[0] : null,
+        activeMembership:
+          student.memberships.length > 0 ? student.memberships[0] : null,
+        latestAssessment:
+          student.assessments.length > 0 ? student.assessments[0] : null,
         workoutPlan: student.workoutPlan,
       };
 
-      console.log('Dados do perfil do aluno:', responseData);
       response.json(responseData);
     } catch (error) {
-      console.error('Erro ao buscar perfil do aluno:', error);
       throw new AppError('Falha ao buscar perfil do aluno', 500);
     }
   }
