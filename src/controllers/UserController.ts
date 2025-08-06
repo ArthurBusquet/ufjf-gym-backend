@@ -362,7 +362,7 @@ export class UserController {
       return;
     }
 
-    response.json({
+    const responseData = {
       id: person.id,
       name: person.name,
       email: person.email,
@@ -371,7 +371,9 @@ export class UserController {
         ...(person.employee ? [person.employee.role] : []),
         ...(person.student ? ['STUDENT'] : []),
       ],
-    });
+    };
+
+    response.json(responseData);
   }
 
   public async updateProfile(
@@ -489,8 +491,9 @@ export class UserController {
 
       // Formatar resposta incluindo data da matrícula ativa
       const formattedStudents = students.map((student) => ({
-        id: student.person.id,
+        id: student.person.id, // personId (mantido para compatibilidade)
         personId: student.person.id,
+        studentId: student.id, // ID da tabela Student
         name: student.person.name,
         email: student.person.email,
         photo: student.person.avatar,
@@ -515,7 +518,6 @@ export class UserController {
     request: Request,
     response: Response
   ): Promise<void> {
-    console.log('Listando funcionários...');
     try {
       // Buscar todos os funcionários com suas informações
       const employees = await prisma.employee.findMany({
@@ -546,8 +548,136 @@ export class UserController {
 
       response.status(200).json(formattedEmployees);
     } catch (error) {
-      console.log('AAAAAAAAAAA');
       throw new AppError('Falha ao listar funcionários', 500);
+    }
+  }
+
+  public async getStudentProfile(
+    request: Request,
+    response: Response
+  ): Promise<void> {
+    const userId = request.user.id;
+
+    try {
+      // Buscar dados completos do aluno
+      const student = await prisma.student.findFirst({
+        where: { personId: Number(userId) },
+        include: {
+          person: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              avatar: true,
+              cpf: true,
+              createdAt: true,
+            },
+          },
+          memberships: {
+            where: {
+              status: 'ACTIVE',
+            },
+            orderBy: {
+              startDate: 'desc',
+            },
+            take: 1,
+          },
+          assessments: {
+            orderBy: {
+              createdAt: 'desc',
+            },
+            take: 1,
+            include: {
+              teacher: {
+                include: {
+                  person: {
+                    select: {
+                      name: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+          workoutPlan: {
+            include: {
+              updatedBy: {
+                include: {
+                  person: {
+                    select: {
+                      name: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!student) {
+        throw new AppError('Aluno não encontrado', 404);
+      }
+
+      // Calcular IMC se houver avaliação física
+      let imc = null;
+      let peso = null;
+      let altura = null;
+      let objetivo = 'Não definido';
+      let nivel = 'Iniciante';
+      let instrutor = 'Não atribuído';
+
+      if (student.assessments.length > 0) {
+        const latestAssessment = student.assessments[0];
+        peso = latestAssessment.weight;
+        altura = latestAssessment.height;
+        imc = peso / (altura * altura);
+        objetivo = latestAssessment.observations || 'Não definido';
+      }
+
+      // Buscar instrutor responsável (professor que criou a ficha de treino)
+      if (student.workoutPlan) {
+        instrutor = student.workoutPlan.updatedBy.person.name;
+      }
+
+      // Calcular frequência (mock - seria calculado baseado em registros de presença)
+      const frequencia = Math.floor(Math.random() * 30) + 70; // 70-100%
+
+      // Formatar datas
+      const membroDesde = student.person.createdAt.toLocaleDateString('pt-BR');
+      const vencimento =
+        student.memberships.length > 0
+          ? new Date(
+              student.memberships[0].endDate || new Date()
+            ).toLocaleDateString('pt-BR')
+          : 'Não definido';
+
+      const responseData = {
+        id: student.person.id,
+        nome: student.person.name,
+        matricula: `ST${student.person.id.toString().padStart(6, '0')}`,
+        peso: peso ? `${peso}kg` : 'Não informado',
+        altura: altura ? `${altura}m` : 'Não informado',
+        imc: imc ? imc.toFixed(1) : 'Não calculado',
+        objetivo,
+        nivel,
+        membroDesde,
+        vencimento,
+        frequencia,
+        instrutor,
+        email: student.person.email,
+        cpf: student.person.cpf,
+        avatar: student.person.avatar,
+        activeMembership:
+          student.memberships.length > 0 ? student.memberships[0] : null,
+        latestAssessment:
+          student.assessments.length > 0 ? student.assessments[0] : null,
+        workoutPlan: student.workoutPlan,
+      };
+
+      response.json(responseData);
+    } catch (error) {
+      throw new AppError('Falha ao buscar perfil do aluno', 500);
     }
   }
 }

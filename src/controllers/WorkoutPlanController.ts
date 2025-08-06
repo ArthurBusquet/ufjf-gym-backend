@@ -11,7 +11,7 @@ export class WorkoutPlanController {
   ): Promise<void> {
     const { studentId } = request.params;
     const content = request.body;
-    const teacherId = request.user.id;
+    const teacherId = request.user.employeeId;
 
     try {
       workoutPlanSchema.createUpdate.parse(content);
@@ -37,19 +37,33 @@ export class WorkoutPlanController {
         throw new AppError('Aluno não encontrado', 404);
       }
 
-      // Upsert (cria ou atualiza) a ficha de treino
-      const workoutPlan = await prisma.workoutPlan.upsert({
+      // Verificar se já existe ficha de treino para o aluno
+      const existingWorkoutPlan = await prisma.workoutPlan.findUnique({
         where: { studentId: Number(studentId) },
-        update: {
-          content,
-          employeeId: teacherId,
-        },
-        create: {
-          content,
-          studentId: Number(studentId),
-          employeeId: teacherId,
-        },
       });
+
+      let workoutPlan;
+
+      if (existingWorkoutPlan) {
+        // Atualizar ficha existente
+        workoutPlan = await prisma.workoutPlan.update({
+          where: { studentId: Number(studentId) },
+          data: {
+            content,
+            employeeId: Number(teacherId),
+          },
+        });
+      } else {
+        console.log('teste', studentId, teacherId);
+        // Criar nova ficha
+        workoutPlan = await prisma.workoutPlan.create({
+          data: {
+            content,
+            studentId: Number(studentId),
+            employeeId: Number(teacherId),
+          },
+        });
+      }
 
       response.status(200).json(workoutPlan);
     } catch (error) {
@@ -62,6 +76,8 @@ export class WorkoutPlanController {
 
   public async get(request: Request, response: Response): Promise<void> {
     const { studentId } = request.params;
+
+    console.log('studentId', studentId);
 
     try {
       const workoutPlan = await prisma.workoutPlan.findUnique({
@@ -98,6 +114,7 @@ export class WorkoutPlanController {
         teacherName: workoutPlan.updatedBy.person.name,
       });
     } catch (error) {
+      console.error('Erro ao buscar ficha de treino:', error);
       throw new AppError('Falha ao buscar ficha de treino', 500);
     }
   }

@@ -12,8 +12,6 @@ export class AuthController {
   public async login(request: Request, response: Response): Promise<void> {
     const { email, password } = request.body;
 
-    console.log('Login attempt:', { email, password });
-
     // Buscar pessoa com suas especializações
     const person = await prisma.person.findUnique({
       where: { email },

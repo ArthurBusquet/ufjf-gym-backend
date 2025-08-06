@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/explicit-function-return-type */
+/* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 import { PrismaClient } from '@prisma/client';
 import { hash } from 'bcrypt';
 
@@ -187,6 +189,23 @@ async function main() {
     },
   });
 
+  // Obter IDs dos funcionários (para referenciar na PhysicalAssessment)
+  const employees = await prisma.employee.findMany({
+    select: { id: true, person: { select: { email: true } } },
+  });
+
+  const getEmployeeId = (email: string) => {
+    return employees.find((e) => e.person.email === email)?.id || 0;
+  };
+
+  const students = await prisma.student.findMany({
+    select: { id: true, person: { select: { email: true } } },
+  });
+
+  const getStudentId = (email: string) => {
+    return students.find((e) => e.person.email === email)?.id || 0;
+  };
+
   // Criar matrículas
   await prisma.membership.createMany({
     data: [
@@ -274,7 +293,7 @@ async function main() {
             },
           ],
         },
-        employeeId: joaoEmployee.id,
+        employeeId: getEmployeeId('joao.prof@academia.com'),
       },
       {
         studentId: sofiaStudent.id,
@@ -317,7 +336,7 @@ async function main() {
             },
           ],
         },
-        employeeId: mariaEmployee.id,
+        employeeId: getEmployeeId('maria.prof@academia.com'),
       },
     ],
   });
@@ -326,24 +345,24 @@ async function main() {
   await prisma.physicalAssessment.createMany({
     data: [
       {
-        studentId: lucasStudent.id,
-        teacherId: joaoEmployee.id,
+        studentId: getStudentId('lucas.aluno@email.com'),
+        teacherId: getEmployeeId('joao.prof@academia.com'),
         height: 1.78,
         weight: 75.5,
         bodyFat: 18.2,
         observations: 'Boa evolução na massa muscular',
       },
       {
-        studentId: sofiaStudent.id,
-        teacherId: mariaEmployee.id,
+        studentId: getStudentId('sofia.aluna@email.com'),
+        teacherId: getEmployeeId('maria.prof@academia.com'),
         height: 1.65,
         weight: 62.0,
         bodyFat: 22.5,
         observations: 'Foco na redução de gordura corporal',
       },
       {
-        studentId: miguelStudent.id,
-        teacherId: joaoEmployee.id,
+        studentId: getStudentId('miguel.aluno@email.com'),
+        teacherId: getEmployeeId('joao.prof@academia.com'),
         height: 1.82,
         weight: 85.0,
         bodyFat: 25.8,

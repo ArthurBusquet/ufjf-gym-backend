@@ -25,4 +25,12 @@ physicalAssessmentRoutes.put(
   physicalAssessmentController.update.bind(physicalAssessmentController)
 );
 
+// Buscar avaliações de um aluno
+physicalAssessmentRoutes.get(
+  '/students/:studentId/assessments',
+  ensureAuthenticated,
+  checkRole(['TEACHER', 'ADMIN']),
+  physicalAssessmentController.getByStudent.bind(physicalAssessmentController)
+);
+
 export { physicalAssessmentRoutes };
