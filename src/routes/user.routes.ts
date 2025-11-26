@@ -82,7 +82,7 @@ usersRoutes.put(
   '/:id',
   upload.single('avatar'),
   ensureAuthenticated,
-  checkRole(['ADMIN']),
+  checkRole(['ADMIN', 'RECEPTIONIST']),
   validate(userSchema.update),
   UserController.update.bind(UserController)
 );

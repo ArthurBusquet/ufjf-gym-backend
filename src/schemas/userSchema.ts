@@ -14,12 +14,12 @@ export const userSchema = {
     role: EmployeeRole.optional(),
     tenure: z.coerce.number().min(0).optional(),
     isStudent: z.boolean().optional(),
-    membership: z
-      .object({
-        type: MembershipType,
-        startDate: z.string().datetime(),
-      })
-      .optional(),
+    membership: z.object({
+      type: MembershipType,
+      startDate: z.string().datetime(),
+      endDate: z.string().datetime().optional(),
+      status: MembershipStatus.optional()
+    }).optional()
   }),
 
   update: z.object({
@@ -29,6 +29,13 @@ export const userSchema = {
     role: EmployeeRole.optional(),
     tenure: z.number().min(0).optional(),
     isStudent: z.boolean().optional(),
+
+    membership: z.object({
+      type: MembershipType,
+      startDate: z.string().datetime(),
+      endDate: z.string().datetime().optional(),
+      status: MembershipStatus.optional()
+    }).optional()
   }),
 
   updateProfile: z.object({

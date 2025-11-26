@@ -97,7 +97,7 @@ export class UserController {
   public async update(request: Request, response: Response): Promise<void> {
     const userId = request.params.id;
 
-    const { name, email, role, tenure, isStudent } = request.body;
+    const { name, email, role, tenure, isStudent, membership } = request.body;
 
     try {
       // Atualizar foto se fornecida
@@ -164,6 +164,90 @@ export class UserController {
         }
       }
 
+      // Atualizar matrícula (membership)
+      if (membership) {
+        // Verificar se a pessoa é aluno
+        const student = await prisma.student.findUnique({
+          where: { personId: Number(userId) },
+        });
+
+        if (!student) {
+          throw new AppError(
+            "Esta pessoa não é um aluno e não pode ter matrícula.",
+            400
+          );
+        }
+
+        const membershipStatus = membership.status ?? "ACTIVE";
+
+        // Se estiver ativando uma membership, cancelar outras ativas primeiro
+        if (membershipStatus === "ACTIVE") {
+          await prisma.membership.updateMany({
+            where: {
+              studentId: student.id,
+              status: "ACTIVE",
+            },
+            data: {
+              status: "CANCELLED",
+            },
+          });
+        }
+
+        // Buscar membership ativa existente (ou a mais recente se não houver ativa)
+        const activeMembership = await prisma.membership.findFirst({
+          where: {
+            studentId: student.id,
+            status: "ACTIVE",
+          },
+        });
+
+        const mostRecentMembership = await prisma.membership.findFirst({
+          where: {
+            studentId: student.id,
+          },
+          orderBy: {
+            startDate: 'desc',
+          },
+        });
+
+        // Se há membership ativa, atualizar ela
+        // Se não há ativa mas há uma membership, atualizar a mais recente
+        // Se não há nenhuma, criar nova
+        if (activeMembership) {
+          await prisma.membership.update({
+            where: { id: activeMembership.id },
+            data: {
+              type: membership.type,
+              startDate: new Date(membership.startDate),
+              endDate: membership.endDate ? new Date(membership.endDate) : null,
+              status: membershipStatus,
+            },
+          });
+        } else if (mostRecentMembership) {
+          await prisma.membership.update({
+            where: { id: mostRecentMembership.id },
+            data: {
+              type: membership.type,
+              startDate: new Date(membership.startDate),
+              endDate: membership.endDate ? new Date(membership.endDate) : null,
+              status: membershipStatus,
+            },
+          });
+        } else {
+          // Criar nova matrícula
+          await prisma.membership.create({
+            data: {
+              type: membership.type,
+              startDate: new Date(membership.startDate),
+              endDate: membership.endDate ? new Date(membership.endDate) : null,
+              status: membershipStatus,
+              student: { connect: { id: student.id } },
+            },
+          });
+        }
+      }
+
+
       const updatedUser = await prisma.person.findUnique({
         where: { id: Number(userId) },
         select: {
@@ -202,7 +286,7 @@ export class UserController {
   }
 
   public async create(request: Request, response: Response): Promise<void> {
-    const { name, email, cpf, password, role, tenure, isStudent } =
+    const { name, email, cpf, password, role, tenure, isStudent, membership } =
       request.body;
     const currentUser = request.user;
 
@@ -257,10 +341,25 @@ export class UserController {
       }
 
       // Criar aluno se especificado
+      let studentId: number | null = null;
       if (isStudent) {
-        await prisma.student.create({
+        const student = await prisma.student.create({
           data: {
             person: { connect: { id: person.id } },
+          },
+        });
+        studentId = student.id;
+      }
+
+      // Criar membership se fornecida e se for aluno
+      if (membership && isStudent && studentId) {
+        await prisma.membership.create({
+          data: {
+            type: membership.type,
+            startDate: new Date(membership.startDate),
+            endDate: membership.endDate ? new Date(membership.endDate) : null,
+            status: membership.status ?? "ACTIVE",
+            student: { connect: { id: studentId } },
           },
         });
       }
@@ -464,7 +563,7 @@ export class UserController {
     response: Response
   ): Promise<void> {
     try {
-      // Buscar todos os alunos com suas informações básicas e matrícula ativa
+      // Buscar todos os alunos com suas informações básicas
       const students = await prisma.student.findMany({
         include: {
           person: {
@@ -478,38 +577,42 @@ export class UserController {
             },
           },
           memberships: {
-            where: {
-              status: 'ACTIVE',
-            },
             orderBy: {
-              startDate: 'desc', // Ordena para pegar a mais recente
+              startDate: 'desc', // Ordena por data, mais recente primeiro
             },
-            take: 1, // Pega apenas a matrícula ativa mais recente
           },
         },
       });
 
-      // Formatar resposta incluindo data da matrícula ativa
-      const formattedStudents = students.map((student) => ({
-        id: student.person.id, // personId (mantido para compatibilidade)
-        personId: student.person.id,
-        studentId: student.id, // ID da tabela Student
-        name: student.person.name,
-        email: student.person.email,
-        photo: student.person.avatar,
-        cpf: student.person.cpf,
-        createdAt: student.person.createdAt,
-        activeMembership:
-          student.memberships.length > 0
+      // Formatar resposta incluindo a matrícula mais recente
+      const formattedStudents = students.map((student) => {
+        // Buscar membership ativa primeiro, se não houver, usar a mais recente
+        const activeMembership = student.memberships.find(m => m.status === 'ACTIVE');
+        const membershipToShow = activeMembership || (student.memberships.length > 0 ? student.memberships[0] : null);
+
+        return {
+          id: student.person.id, // personId (mantido para compatibilidade)
+          personId: student.person.id,
+          studentId: student.id, // ID da tabela Student
+          name: student.person.name,
+          email: student.person.email,
+          photo: student.person.avatar,
+          cpf: student.person.cpf,
+          createdAt: student.person.createdAt,
+          activeMembership: membershipToShow
             ? {
-                startDate: student.memberships[0].startDate,
-                type: student.memberships[0].type,
+                startDate: membershipToShow.startDate,
+                endDate: membershipToShow.endDate,
+                type: membershipToShow.type,
+                status: membershipToShow.status,
               }
             : null,
-      }));
+        };
+      });
 
       response.status(200).json(formattedStudents);
     } catch (error) {
+      console.error('Erro ao listar alunos:', error);
       throw new AppError('Falha ao listar alunos', 500);
     }
   }

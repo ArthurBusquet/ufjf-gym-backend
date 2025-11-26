@@ -13,7 +13,7 @@
     "start": "node dist/server.js"
   },
   "prisma": {
-    "seed": "ts-node prisma/seed.ts"
+    "seed": "ts-node ./prisma/seed.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.465.0",
@@ -45,6 +45,7 @@
     "@types/express": "^4.17.17",
     "@types/jsonwebtoken": "^9.0.3",
     "@types/multer": "^1.4.7",
+    "@types/node": "^24.10.1",
     "@types/sharp": "^0.31.1",
     "@typescript-eslint/eslint-plugin": "^6.4.0",
     "babel-plugin-module-resolver": "^4.1.0",
@@ -62,8 +63,9 @@
     "husky": "^8.0.0",
     "prettier": "^3.0.3",
     "prisma": "^5.3.1",
+    "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
     "tsconfig-paths": "^4.2.0",
-    "typescript": "*"
+    "typescript": "^5.9.3"
   }
 }

@@ -249,97 +249,98 @@ async function main() {
   });
 
   // Criar fichas de treino
-  await prisma.workoutPlan.createMany({
-    data: [
-      {
-        studentId: lucasStudent.id,
-        content: {
-          nome: 'Treino ABC - Hipertrofia',
-          objetivo: 'Ganho de Massa Muscular',
-          validoAte: '30/09/2023',
-          observacoes:
-            'Focar na execução correta dos movimentos e controle da fase excêntrica.',
-          grupos: [
-            {
-              nome: 'Peito e Tríceps',
-              exercicios: [
-                {
-                  nome: 'Supino Reto',
-                  series: '4',
-                  repeticoes: '10-12',
-                  carga: '40kg',
-                  descanso: '90s',
-                },
-                {
-                  nome: 'Supino Inclinado Halteres',
-                  series: '3',
-                  repeticoes: '12-15',
-                  carga: '18kg',
-                  descanso: '60s',
-                },
-              ],
-            },
-            {
-              nome: 'Costas e Bíceps',
-              exercicios: [
-                {
-                  nome: 'Barra Fixa',
-                  series: '4',
-                  repeticoes: '8-10',
-                  carga: 'Peso Corporal',
-                  descanso: '90s',
-                },
-              ],
-            },
-          ],
-        },
-        employeeId: getEmployeeId('joao.prof@academia.com'),
+ await prisma.workoutPlan.createMany({
+  data: [
+    {
+      studentId: lucasStudent.id,
+      content: {
+        nome: 'Treino ABC - Hipertrofia',
+        objetivo: 'Ganho de Massa Muscular',
+        validoAte: '30/09/2023',
+        observacoes:
+          'Focar na execução correta dos movimentos e controle da fase excêntrica.',
+        grupos: [
+          {
+            nome: 'Peito e Tríceps',
+            exercicios: [
+              {
+                nome: 'Supino Reto',
+                series: '4',
+                repeticoes: '10-12',
+                carga: '40kg',
+                descanso: '90s',
+              },
+              {
+                nome: 'Supino Inclinado Halteres',
+                series: '3',
+                repeticoes: '12-15',
+                carga: '18kg',
+                descanso: '60s',
+              },
+            ],
+          },
+          {
+            nome: 'Costas e Bíceps',
+            exercicios: [
+              {
+                nome: 'Barra Fixa',
+                series: '4',
+                repeticoes: '8-10',
+                carga: 'Peso Corporal',
+                descanso: '90s',
+              },
+            ],
+          },
+        ],
       },
-      {
-        studentId: sofiaStudent.id,
-        content: {
-          nome: 'Treino Feminino - Resistência',
-          objetivo: 'Melhoria da Resistência Cardiovascular',
-          validoAte: '30/10/2023',
-          observacoes: 'Manter frequência cardíaca na zona alvo.',
-          grupos: [
-            {
-              nome: 'Cardio',
-              exercicios: [
-                {
-                  nome: 'Esteira',
-                  series: '1',
-                  repeticoes: '30 min',
-                  carga: 'Velocidade 6 km/h',
-                  descanso: '0s',
-                },
-              ],
-            },
-            {
-              nome: 'Membros Inferiores',
-              exercicios: [
-                {
-                  nome: 'Leg Press',
-                  series: '3',
-                  repeticoes: '15-20',
-                  carga: '50kg',
-                  descanso: '60s',
-                },
-                {
-                  nome: 'Cadeira Extensora',
-                  series: '3',
-                  repeticoes: '15',
-                  carga: '30kg',
-                  descanso: '45s',
-                },
-              ],
-            },
-          ],
-        },
-        employeeId: getEmployeeId('maria.prof@academia.com'),
+      employeeId: joaoEmployee.id, // ← ID CORRETO
+    },
+    {
+      studentId: sofiaStudent.id,
+      content: {
+        nome: 'Treino Feminino - Resistência',
+        objetivo: 'Melhoria da Resistência Cardiovascular',
+        validoAte: '30/10/2023',
+        observacoes: 'Manter frequência cardíaca na zona alvo.',
+        grupos: [
+          {
+            nome: 'Cardio',
+            exercicios: [
+              {
+                nome: 'Esteira',
+                series: '1',
+                repeticoes: '30 min',
+                carga: 'Velocidade 6 km/h',
+                descanso: '0s',
+              },
+            ],
+          },
+          {
+            nome: 'Membros Inferiores',
+            exercicios: [
+              {
+                nome: 'Leg Press',
+                series: '3',
+                repeticoes: '15-20',
+                carga: '50kg',
+                descanso: '60s',
+              },
+              {
+                nome: 'Cadeira Extensora',
+                series: '3',
+                repeticoes: '15',
+                carga: '30kg',
+                descanso: '45s',
+              },
+            ],
+          },
+        ],
       },
-    ],
-  });
+      employeeId: mariaEmployee.id, // ← ID CORRETO
+    },
+  ],
+});
+
 
   // Criar avaliações físicas
   await prisma.physicalAssessment.createMany({
