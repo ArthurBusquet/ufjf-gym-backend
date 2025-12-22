@@ -88,7 +88,7 @@ model WorkoutPlan {
   student   Student      @relation(fields: [studentId], references: [id])
   studentId Int @unique
   updatedBy Employee      @relation(fields: [employeeId], references: [id])
-  employeeId Int @unique
+  employeeId Int         
 
   createdAt DateTime        @default(now())
   updatedAt DateTime        @updatedAt

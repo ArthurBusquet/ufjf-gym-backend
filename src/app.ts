@@ -13,6 +13,16 @@ const app = express();
 app.use(express.json());
 
 app.use(cors());
+
+// Health check endpoint - usado pelo frontend para verificar disponibilidade do backend
+app.get('/api/health', (_: Request, response: Response) => {
+  response.status(200).json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+  });
+});
+
 app.use(router);
 app.disable('x-powered-by');
 
